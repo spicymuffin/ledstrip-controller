@@ -10,18 +10,23 @@ PORT_NUMBER = 5000
 SIZE = 1024
 # endregion
 # region runtime
-
+SEND_SOCKET = None
 # endregion
 # endregion
 
-print(
-    "Test client sending packets to IP {0}, via port {1}\n".format(
-        SERVER_IP, PORT_NUMBER
-    )
-)
 
-mySocket = socket(AF_INET, SOCK_DGRAM)
+def startup():
+    global SEND_SOCKET
+    SEND_SOCKET = socket(AF_INET, SOCK_DGRAM)
 
-while True:
-    mySocket.sendto(b"cool", (SERVER_IP, PORT_NUMBER))
-    time.sleep(0.5)
+
+def mainloop():
+    global SEND_SOCKET
+    while True:
+        SEND_SOCKET.sendto(b"cool", (SERVER_IP, PORT_NUMBER))
+        time.sleep(0.5)
+
+
+if __name__ == "main":
+    startup()
+    mainloop()

@@ -1,3 +1,9 @@
+# WakaTime:
+# https://www.google.com/search?q=wakatime&oq=wakatim&gs_lcrp=EgZjaHJvbWUqDQgAEAAYgwEYsQMYgAQyDQgAEAAYgwEYsQMYgAQyBggBEEUYOTIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABDIHCAkQABiABKgCALACAA&sourceid=chrome&ie=UTF-8
+#
+# manage time bruh
+
+
 # library imports
 from socket import socket, gethostbyname, AF_INET, SOCK_DGRAM
 import sys
@@ -26,7 +32,9 @@ def startup():
     RECV_SOCKET = socket(AF_INET, SOCK_DGRAM)
     RECV_SOCKET.bind((hostname, PORT_NUMBER))
 
-    print(f"Test server listening on port {PORT_NUMBER}.")
+    print(f"server listening on port {PORT_NUMBER}.")
+
+    ledcontroller.initialize_strip()
 
 
 def listen():
@@ -38,3 +46,4 @@ def listen():
 
 if __name__ == "main":
     startup()
+    listen()
