@@ -7,6 +7,7 @@
 # library imports
 from socket import socket, gethostbyname, AF_INET, SOCK_DGRAM
 import sys
+import threading
 
 # custom imports
 import ledcontroller
@@ -18,6 +19,8 @@ SIZE = 1024
 # endregion
 # region runtime
 RECV_SOCKET = None
+STRIP = None
+EXECUTION_THREAD = None
 # endregion
 # endregion
 
@@ -26,6 +29,7 @@ def startup():
     global PORT_NUMBER
     global SIZE
     global RECV_SOCKET
+    global STRIP
 
     hostname = gethostbyname("0.0.0.0")
 
@@ -34,16 +38,26 @@ def startup():
 
     print(f"server listening on port {PORT_NUMBER}.")
 
-    ledcontroller.initialize_strip()
+    STRIP = ledcontroller.initialize_strip()
 
 
 def listen():
     global RECV_SOCKET
+    global STRIP
+    global EXECUTION_THREAD
+
     while True:
         (data, addr) = RECV_SOCKET.recvfrom(SIZE)
         print(data, addr)
+        decoded = data.decode()
+
+        if EXECUTION_THREAD != None:
+            EXECUTION_THREAD.join()
+        EXECUTION_THREAD = threading.Thread(target=execute_anim, args=(ledcontroller.ANIMATIONS[int(decoded)], (STRIP,)))
+        EXECUTION_THREAD.daemon = True
+        EXECUTION_THREAD.start()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     startup()
     listen()
