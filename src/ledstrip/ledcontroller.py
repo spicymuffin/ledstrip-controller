@@ -2,6 +2,8 @@ import random
 import time
 import threading
 
+import ledstrip.util as util
+
 from rpi_ws281x import *
 
 # region LED strip configuration:
@@ -75,10 +77,20 @@ class chunk:
         self.animation = animation_colorwipe(self)
         self.animation.start()
 
-    def set_animation(self, _animation):
+    def set_animation(self, _animation_class, _anim_args):
         self.animation.stop()
-        self.animation = _animation
+        sanitation_result = None
+        try:
+            sanitation_result = _animation_class.sanitize_arguments(*_anim_args)
+        except Exception as ex:
+            return (-1, f"sanitator pass fault {ex}")
+
+        if sanitation_result[0] == -1:
+            return (-1, f"sanitation error: {sanitation_result[1]}")
+        self.animation = _animation_class(self, *(sanitation_result[1]))
+        print(self.animation)
         self.animation.start()
+        return (0, "animation set")
 
     def __str__(self) -> str:
         return f"chunk: start={self.start}; end={self.end}"
@@ -130,6 +142,19 @@ class animation_colorwipe(animation):
                 self.strip.show()
                 time.sleep(self.wait_ms / 1000.0)
 
+    @staticmethod
+    def sanitize_arguments(_color, _wait_ms):
+        color = util.decode_color(_color)
+        if color == -1:
+            return (-1, "invalid color")
+
+        wait_ms = None
+        try:
+            wait_ms = int(_wait_ms)
+        except:
+            return (-1, "invalid wait_ms")
+
+        return (0, (color, wait_ms))
 
 class animation_off(animation):
     def __init__(self, _chunk) -> None:
@@ -223,6 +248,4 @@ if __name__ == "__main__":
         i += 1
         print(f"animating... {strip.chunks[0]}")
         if i == 5:
-            strip.chunks[0].set_animation(
-                animation_rainbowcycle(strip.chunks[0])
-            )
+            strip.chunks[0].set_animation(animation_rainbowcycle(strip.chunks[0]))
