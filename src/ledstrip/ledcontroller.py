@@ -70,6 +70,7 @@ class chunk:
     def __init__(self, _start, _end, _neopixel) -> None:
         self.start = _start
         self.end = _end
+        self.num_pixels = _start - _end + 1
         self.neopixel = _neopixel
         self.animation = animation_colorwipe(self)
         self.animation.start()
@@ -179,6 +180,24 @@ class animation_theaterchaserainbow(animation):
                         self.strip.setPixelColor(i + q, 0)
 
 
+class animation_rainbowcycle(animation):
+    def __init__(self, _chunk, _wait_ms=100) -> None:
+        super().__init__(_chunk)
+        self.wait_ms = _wait_ms
+
+    def exec(self):
+        while True:
+            if self.stopflag:
+                return
+            for j in range(256):
+                for i in range(self.chunk.start, self.chunk.end + 1):
+                    self.strip.setPixelColor(
+                        i, wheel(((i * 256 // self.chunk.num_pixels) + j) & 255)
+                    )
+                self.strip.show()
+                time.sleep(self.wait_ms / 1000.0)
+
+
 # endregion
 
 
@@ -197,27 +216,6 @@ def rainbowCycle(strip, wait_ms=200, iterations=500000):
 
 
 if __name__ == "__main__":
-    """
-    # Create NeoPixel object with appropriate configuration.
-    strip = Adafruit_NeoPixel(
-        LED_COUNT,
-        LED_PIN,
-        LED_FREQ_HZ,
-        LED_DMA,
-        LED_INVERT,
-        LED_BRIGHTNESS,
-        LED_CHANNEL,
-        LED_STRIP,
-    )
-    # Intialize the library (must be called once before other functions).
-    strip.begin()
-
-    print("Press Ctrl-C to quit.")
-    while True:
-        rainbowCycle(strip)
-
-    """
-
     strip = ledstrip()
     i = 0
     while True:
@@ -226,5 +224,5 @@ if __name__ == "__main__":
         print(f"animating... {strip.chunks[0]}")
         if i == 5:
             strip.chunks[0].set_animation(
-                animation_theaterchaserainbow(strip.chunks[0])
+                animation_rainbowcycle(strip.chunks[0])
             )

@@ -10,7 +10,7 @@ import sys
 import threading
 
 # custom imports
-import ledcontroller
+from ledcontroller import *
 
 # region global vars
 # region runopt
@@ -38,7 +38,9 @@ def startup():
 
     print(f"server listening on port {PORT_NUMBER}.")
 
-    STRIP = ledcontroller.initialize_strip()
+    STRIP = ledstrip()
+    i = 0
+    STRIP.chunks[0].set_animation(animation_rainbowcycle(STRIP.chunks[0]))
 
 
 def listen():
@@ -50,12 +52,6 @@ def listen():
         (data, addr) = RECV_SOCKET.recvfrom(SIZE)
         print(data, addr)
         decoded = data.decode()
-
-        if EXECUTION_THREAD != None:
-            EXECUTION_THREAD.join()
-        EXECUTION_THREAD = threading.Thread(target=execute_anim, args=(ledcontroller.ANIMATIONS[int(decoded)], (STRIP,)))
-        EXECUTION_THREAD.daemon = True
-        EXECUTION_THREAD.start()
 
 
 if __name__ == "__main__":
