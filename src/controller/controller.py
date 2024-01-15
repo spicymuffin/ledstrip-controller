@@ -23,10 +23,9 @@ def startup():
 def mainloop():
     global SEND_SOCKET
     while True:
-        SEND_SOCKET.sendto(b"cool", (SERVER_IP, PORT_NUMBER))
-        time.sleep(0.5)
+        command = input()
+        SEND_SOCKET.sendto(command.encode("utf-8"), (SERVER_IP, PORT_NUMBER))
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     startup()
-    mainloop()
