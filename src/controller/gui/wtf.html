@@ -1,0 +1,36 @@
+<layer bgcolor="#bfbfbf" name="MWJminiwinMAX" width="' + oWidth + '" left="' + oLeft + '" top="' + oTop + '"
+    visibility="' + ((oVis == 1) ? 'show' : 'hide') + '">
+    <table border="2" cellpadding="2" cellspacing="2" width="100%">
+        <tr>
+            <td bgcolor="' + barColour + '">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td>
+                        <td align="left" valign="middle" height="16" width="20">
+                            <a href="javascript:manuf();" onfocus="this.blur()" onmouseover="" onmouseout="">
+                                <img src="' + oLogo + '" border="0" height="16" width="16" alt="Info."></a>
+                        </td>
+                        <td align="left" valign="middle">
+                            <ilayer width="' + (oWidth - 74) + '" height="16" left="0" top="0">
+                                <layer width="' + (oWidth - 74) + '" height="16" left="0" top="0">
+                                    <font color="#ffffff" face="Arial" size="-1"><b></b></font>
+                                </layer>
+                            </ilayer>
+                        </td>
+                        <td align="right" valign="middle" width="32">
+                            <a href="javascript:showMinWin(\'MWJminiwinMIN' + window.MWJ_MINIWINS + '\',\'MWJminiwinMAX' + window.MWJ_MINIWINS + '\');"
+                                onfocus="this.blur()" onmouseover="" onmouseout="">
+                                <img src="' + oMin + '" border="0" height="16" width="16" alt="Minimise."></a>' +
+                            <a href="javascript:hideMinWin(\'MWJminiwinMAX' + window.MWJ_MINIWINS + '\');"
+                                onfocus="this.blur()" onmouseover="" onmouseout="">
+                                <img src="' + oClose + '" border="0" height="16" width="16" alt="Close."></a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td bgcolor="' + mainColour + '"></td>
+        </tr>
+    </table>
+</layer>
