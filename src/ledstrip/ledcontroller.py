@@ -1,8 +1,7 @@
-import random
 import time
 import threading
 
-import ledstrip.util as util
+import util
 
 from rpi_ws281x import *
 
@@ -15,31 +14,6 @@ LED_BRIGHTNESS = 255  # Set to 0 for darkest and 255 for brightest
 LED_INVERT = False  # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL = 0
 LED_STRIP = ws.SK6812_STRIP_RGBW
-# endregion
-
-
-# region helper
-def getRandomColor():
-    return Color(
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-    )
-
-
-def wheel(pos):
-    """Generate rainbow colors across 0-255 positions."""
-    if pos < 85:
-        return Color(pos * 3, 255 - pos * 3, 0)
-    elif pos < 170:
-        pos -= 85
-        return Color(255 - pos * 3, 0, pos * 3)
-    else:
-        pos -= 170
-        return Color(0, pos * 3, 255 - pos * 3)
-
-
 # endregion
 
 
@@ -74,7 +48,7 @@ class chunk:
         self.end = _end
         self.num_pixels = _start - _end + 1
         self.neopixel = _neopixel
-        self.animation = animation_colorwipe(self)
+        self.animation = animation_colorwiperandom(self, "idc", 0)
         self.animation.start()
 
     def set_animation(self, _animation_class, _anim_args):
@@ -124,15 +98,18 @@ class animation:
                 print("undefined animation!")
 
 
-class animation_colorwipe(animation):
-    def __init__(self, _chunk, _color=getRandomColor(), _wait_ms=0) -> None:
+class animation_colorwiperandom(animation):
+    def __init__(self, _chunk, _w, _wait_ms) -> None:
         super().__init__(_chunk)
-        self.color = _color
+        self.w = _w
         self.wait_ms = _wait_ms
 
     def exec(self):
         while True:
-            self.color = getRandomColor()
+            if type(self.w) == int:
+                self.color = util.getRandomRGBColor(self.w)
+            else:
+                self.color = util.getRandomColor()
             if self.stopflag:
                 return
             for i in range(self.chunk.start, self.chunk.end + 1):
@@ -143,18 +120,59 @@ class animation_colorwipe(animation):
                 time.sleep(self.wait_ms / 1000.0)
 
     @staticmethod
-    def sanitize_arguments(_color, _wait_ms):
-        color = util.decode_color(_color)
-        if color == -1:
-            return (-1, "invalid color")
-
+    def sanitize_arguments(_w, _wait_ms):
+        w = None
         wait_ms = None
+
+        try:
+            w = int(_w)
+        except:
+            return (-1, "invalid w")
         try:
             wait_ms = int(_wait_ms)
         except:
             return (-1, "invalid wait_ms")
 
-        return (0, (color, wait_ms))
+        return (0, (w, wait_ms))
+
+
+class animation_colorwipesequence(animation):
+    def __init__(self, _chunk, _colors, _wait_ms) -> None:
+        super().__init__(_chunk)
+        self.colors = _colors
+        self.wait_ms = _wait_ms
+
+    def exec(self):
+        self.i = 0
+        while True:
+            self.color = self.colors[i % len(self.colors)]
+            if self.stopflag:
+                return
+            for i in range(self.chunk.start, self.chunk.end + 1):
+                if self.stopflag:
+                    return
+                self.strip.setPixelColor(i, self.color)
+                self.strip.show()
+                time.sleep(self.wait_ms / 1000.0)
+
+    @staticmethod
+    def sanitize_arguments(_colors, _wait_ms):
+        colors = []
+        wait_ms = None
+
+        try:
+            tmp = util.parse_list(_colors)
+            for c in tmp:
+                colors.append(util.decode_color(c))
+        except:
+            return (-1, "invalid colors")
+        try:
+            wait_ms = int(_wait_ms)
+        except:
+            return (-1, "invalid wait_ms")
+
+        return (0, (colors, wait_ms))
+
 
 class animation_off(animation):
     def __init__(self, _chunk) -> None:
@@ -166,9 +184,39 @@ class animation_off(animation):
             self.strip.setPixelColor(i, off_color)
         self.strip.show()
 
+    @staticmethod
+    def sanitize_arguments():
+        return (0, ())
+
+
+class animation_cancer(animation):
+    def __init__(self, _chunk, _wait_ms) -> None:
+        animation.__init__(self, _chunk)
+        self.wait_ms = _wait_ms
+
+    def exec(self):
+        while True:
+            if self.stopflag:
+                return
+            for i in range(self.chunk.start, self.chunk.end + 1):
+                if self.stopflag:
+                    return
+                self.strip.setPixelColor(i, util.getRandomRGBColor(0))
+            self.strip.show()
+            time.sleep(self.wait_ms / 1000.0)
+
+    @staticmethod
+    def sanitize_arguments(_wait_ms):
+        wait_ms = None
+        try:
+            wait_ms = int(_wait_ms)
+        except:
+            return (-1, "invalid wait_ms")
+        return (0, (wait_ms,))
+
 
 class animation_theaterchase(animation):
-    def __init__(self, _chunk, _color=getRandomColor(), _wait_ms=50) -> None:
+    def __init__(self, _chunk, _color, _wait_ms) -> None:
         super().__init__(_chunk)
         self.color = _color
         self.wait_ms = _wait_ms
@@ -185,6 +233,23 @@ class animation_theaterchase(animation):
                 for i in range(self.chunk.start, self.chunk.end + 1, 3):
                     self.strip.setPixelColor(i + q, 0)
 
+    @staticmethod
+    def sanitize_arguments(_color, _wait_ms):
+        color = None
+        wait_ms = None
+
+        color = util.decode_color(_color)
+
+        if color == -1:
+            return (-1, "invalid color")
+
+        try:
+            wait_ms = int(_wait_ms)
+        except:
+            return (-1, "invalid wait_ms")
+
+        return (0, (color, wait_ms))
+
 
 class animation_theaterchaserainbow(animation):
     def __init__(self, _chunk, _wait_ms=50) -> None:
@@ -198,11 +263,20 @@ class animation_theaterchaserainbow(animation):
             for j in range(256):
                 for q in range(3):
                     for i in range(self.chunk.start, self.chunk.end + 1, 3):
-                        self.strip.setPixelColor(i + q, wheel((i + j) % 255))
+                        self.strip.setPixelColor(i + q, util.wheel((i + j) % 255))
                     self.strip.show()
                     time.sleep(self.wait_ms / 1000.0)
                     for i in range(self.chunk.start, self.chunk.end + 1, 3):
                         self.strip.setPixelColor(i + q, 0)
+
+    @staticmethod
+    def sanitize_arguments(_wait_ms):
+        wait_ms = None
+        try:
+            wait_ms = int(_wait_ms)
+        except:
+            return (-1, "invalid wait_ms")
+        return (0, (wait_ms,))
 
 
 class animation_rainbowcycle(animation):
@@ -217,10 +291,19 @@ class animation_rainbowcycle(animation):
             for j in range(256):
                 for i in range(self.chunk.start, self.chunk.end + 1):
                     self.strip.setPixelColor(
-                        i, wheel(((i * 256 // self.chunk.num_pixels) + j) & 255)
+                        i, util.wheel(((i * 256 // self.chunk.num_pixels) + j) & 255)
                     )
                 self.strip.show()
                 time.sleep(self.wait_ms / 1000.0)
+
+    @staticmethod
+    def sanitize_arguments(_wait_ms):
+        wait_ms = None
+        try:
+            wait_ms = int(_wait_ms)
+        except:
+            return (-1, "invalid wait_ms")
+        return (0, (wait_ms,))
 
 
 # endregion
@@ -235,7 +318,9 @@ def rainbowCycle(strip, wait_ms=200, iterations=500000):
     """Draw rainbow that uniformly distributes itself across all pixels."""
     for j in range(256 * iterations):
         for i in range(strip.numPixels()):
-            strip.setPixelColor(i, wheel(((i * 256 // strip.numPixels()) + j) & 255))
+            strip.setPixelColor(
+                i, util.wheel(((i * 256 // strip.numPixels()) + j) & 255)
+            )
         strip.show()
         time.sleep(wait_ms / 1000.0)
 
