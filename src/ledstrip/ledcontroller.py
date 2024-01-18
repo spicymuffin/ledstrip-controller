@@ -20,7 +20,10 @@ LED_STRIP = ws.SK6812_STRIP_RGBW
 class ledstrip:
     def __init__(self) -> None:
         self.neopixel = self.initialize_strip()
-        self.chunks = [chunk(0, LED_COUNT - 1, self.neopixel)]
+        self.chunks = [
+            chunk(0, LED_COUNT // 2 - 1, self.neopixel),
+            chunk(LED_COUNT // 2, LED_COUNT - 1, self.neopixel),
+        ]
 
     def start_mainloop(self):
         pass
@@ -41,15 +44,88 @@ class ledstrip:
         strip.begin()
         return strip
 
+    def make_chunk(self, _start, _end):
+        i = 0
+        insert_flag = False
+        while i < len(self.chunks):
+            if self.chunks[i].end < _start:
+                continue
+            if _end < self.chunks[i].start:
+                continue
+
+            if _start <= self.chunks[i].start <= _end:
+                self.chunks[i].start = _end + 1
+                if self.chunks[i].start > self.chunks[i].end:
+                    self.chunks[i].animation.stop()
+                    self.chunks.pop(i)
+                    if not insert_flag:
+                        self.chunks.insert(i, chunk(_start, _end, self.neopixel))
+                        insert_flag = True
+                    i -= 1
+            elif _start <= self.chunks[i].end <= _end:
+                self.chunks[i].end = _start - 1
+                if self.chunks[i].start > self.chunks[i].end:
+                    self.chunks[i].animation.stop()
+                    self.chunks.pop(i)
+                    if not insert_flag:
+                        self.chunks.insert(i, chunk(_start, _end, self.neopixel))
+                        insert_flag = True
+                    i -= 1
+            elif _start <= self.chunks[i].start and self.chunks[i].end <= _end:
+                self.chunks[i].animation.stop()
+                self.chunks.pop(i)
+                i -= 1
+            elif self.chunks[i].start < _start and _end < self.chunks[i].end:
+                c_s = self.chunks[i].start
+                c_e = self.chunks[i].end
+                self.chunks[i].animation.stop()
+                self.chunks.pop(i)
+                self.chunks.insert(i, chunk(_end + 1, c_e, self.neopixel))
+                self.chunks.insert(i, chunk(_start, _end, self.neopixel))
+                self.chunks.insert(i, chunk(c_s, _start - 1, self.neopixel))
+                return
+            i += 1
+        print("inserted chunk")
+
+    def print_chunk_segmentation(self):
+        global LED_COUNT
+        i = 0
+        print(len(self.chunks))
+        for i in range(len(self.chunks)):
+            for _ in range(self.chunks[i].num_pixels):
+                print(i, end="")
+        print()
+
 
 class chunk:
-    def __init__(self, _start, _end, _neopixel) -> None:
-        self.start = _start
-        self.end = _end
-        self.num_pixels = _start - _end + 1
+    def __init__(self, s, e, _neopixel) -> None:
+        self._start = s
+        self._end = e
+        self.num_pixels = self.calculate_num_pixels()
         self.neopixel = _neopixel
         self.animation = animation_colorwiperandom(self, "idc", 0)
         self.animation.start()
+
+    def calculate_num_pixels(self):
+        return self._end - self._start + 1
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    @start.setter
+    def start(self, s):
+        self._start = s
+        self.num_pixels = self.calculate_num_pixels()
+
+    @end.setter
+    def end(self, e):
+        self._end = e
+        self.num_pixels = self.calculate_num_pixels()
 
     def set_animation(self, _animation_class, _anim_args):
         self.animation.stop()
@@ -143,9 +219,10 @@ class animation_colorwipesequence(animation):
         self.wait_ms = _wait_ms
 
     def exec(self):
-        self.i = 0
+        j = 0
         while True:
-            self.color = self.colors[i % len(self.colors)]
+            self.color = self.colors[j % len(self.colors)]
+            j += 1
             if self.stopflag:
                 return
             for i in range(self.chunk.start, self.chunk.end + 1):
@@ -328,9 +405,16 @@ def rainbowCycle(strip, wait_ms=200, iterations=500000):
 if __name__ == "__main__":
     strip = ledstrip()
     i = 0
-    while True:
-        time.sleep(1)
-        i += 1
-        print(f"animating... {strip.chunks[0]}")
-        if i == 5:
-            strip.chunks[0].set_animation(animation_rainbowcycle(strip.chunks[0]))
+    # while True:
+    #     time.sleep(1)
+    #     i += 1
+    #     print(f"animating... {strip.chunks[0]}")
+    #     if i == 5:
+    #         strip.chunks[0].set_animation(animation_rainbowcycle(strip.chunks[0]))
+
+    #strip.make_chunk(50, 75)
+    time.sleep(1)
+    #strip.print_chunk_segmentation()
+    time.sleep(5)
+    #strip.print_chunk_segmentation()
+    time.sleep(50)
