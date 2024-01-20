@@ -42,9 +42,13 @@ def startup():
 
 
 ANIM_DICT = {
-    "colorwipe": {
-        "class": animation_colorwipe,
-        "aliases": ["colorwipe", "cw"],
+    "colorwipesequence": {
+        "class": animation_colorwipesequence,
+        "aliases": ["colorwipesequence", "cws"],
+    },
+    "colorwiperandom": {
+        "class": animation_colorwiperandom,
+        "aliases": ["colorwiperandom", "cwr"],
     },
     "off": {
         "class": animation_off,
@@ -61,6 +65,10 @@ ANIM_DICT = {
     "rainbowcycle": {
         "class": animation_rainbowcycle,
         "aliases": ["rainbowcycle", "rbc", "rc"],
+    },
+    "cancer": {
+        "class": animation_cancer,
+        "aliases": ["cancer", "cncr"],
     },
 }
 
@@ -91,9 +99,9 @@ def command_change_animation(_args):
     if len(_args) < 2:
         return (-1, "chunk_data/animation_code fault")
 
-    args = _args[2:]
     ac = _args[0]
     chunk_data = _args[1]
+    args = _args[2:]
 
     ac_interpret_result = animationcode_interpret(_animation_code=ac)
 
@@ -122,13 +130,32 @@ def command_ping(_args):
 
 
 def command_off(_args):
-    return (0, "")
+    global STRIP
+
+    return command_change_animation(
+        ["off", ",".join(list(map(str, range(len(STRIP.chunks)))))]
+    )
+
+
+def command_make_chunk(_args):
+    if len(_args) < 2:
+        return (-1, "chunk boundaries setting error")
+
+    s = _args[0]
+    e = _args[1]
+
+    try:
+        s = int(s)
+        e = int(e)
+    except:
+        return (-1, "invalid boundaries")
 
 
 CMD_MAP = {
     "off": command_off,
     "change_animation": command_change_animation,
     "ping": command_ping,
+    "make_chunk": command_make_chunk,
 }
 
 
