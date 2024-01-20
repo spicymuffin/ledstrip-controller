@@ -5,7 +5,7 @@ import time
 
 # region global vars
 # region runopt
-SERVER_IP = "192.168.137.22"
+SERVER_IP = "192.168.137.176"
 PORT_NUMBER = 5000
 SIZE = 1024
 # endregion
@@ -18,6 +18,8 @@ SEND_SOCKET = None
 def startup():
     global SEND_SOCKET
     SEND_SOCKET = socket(AF_INET, SOCK_DGRAM)
+    SEND_SOCKET.settimeout(1)
+    print("lia-ledstrip-controller ver. 0.5")
     mainloop()
 
 
