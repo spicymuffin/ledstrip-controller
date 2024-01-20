@@ -37,7 +37,7 @@ w channel defaults to 0
 """
 
 
-def decode_color(_input):
+def parse_color(_input):
     try:
         if _input == "rnd":
             return getRandomColor()

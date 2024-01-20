@@ -14,6 +14,7 @@ LED_BRIGHTNESS = 255  # Set to 0 for darkest and 255 for brightest
 LED_INVERT = False  # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL = 0
 LED_STRIP = ws.SK6812_STRIP_RGBW
+SLEEP_TIME = 1 / 128
 # endregion
 
 
@@ -21,12 +22,12 @@ class ledstrip:
     def __init__(self) -> None:
         self.neopixel = self.initialize_strip()
         self.chunks = [
-            chunk(0, LED_COUNT // 2 - 1, self.neopixel),
-            chunk(LED_COUNT // 2, LED_COUNT - 1, self.neopixel),
+            chunk(0, LED_COUNT - 1, self.neopixel),
         ]
         self.tick = 0
 
     def update(self):
+        global SLEEP_TIME
         upd = False
         for i in range(len(self.chunks)):
             animref = self.chunks[i].animation
@@ -36,6 +37,7 @@ class ledstrip:
         if upd:
             self.neopixel.show()
         self.tick += 1
+        time.sleep(SLEEP_TIME)
 
     def initialize_strip(self):
         # Create NeoPixel object with appropriate configuration.
@@ -56,6 +58,7 @@ class ledstrip:
     def make_chunk(self, _start, _end):
         i = 0
         insert_flag = False
+        insert_index = -1
         while i < len(self.chunks):
             if self.chunks[i].end < _start:
                 i += 1
@@ -71,7 +74,7 @@ class ledstrip:
                     self.chunks.pop(i)
                     i -= 1
                 if not insert_flag:
-                    self.chunks.insert(i, chunk(_start, _end, self.neopixel))
+                    insert_index = i
                     insert_flag = True
             elif _start <= self.chunks[i].end <= _end:
                 self.chunks[i].end = _start - 1
@@ -80,7 +83,7 @@ class ledstrip:
                     self.chunks.pop(i)
                     i -= 1
                 if not insert_flag:
-                    self.chunks.insert(i, chunk(_start, _end, self.neopixel))
+                    insert_index = i
                     insert_flag = True
             elif _start <= self.chunks[i].start and self.chunks[i].end <= _end:
                 self.chunks[i].animation.stop()
@@ -96,7 +99,10 @@ class ledstrip:
                 self.chunks.insert(i, chunk(c_s, _start - 1, self.neopixel))
                 return
             i += 1
+
+        self.chunks.insert(insert_index, chunk(_start, _end, self.neopixel))
         print("inserted chunk")
+        return (0, "inserted chunk")
 
     def print_chunk_segmentation(self):
         global LED_COUNT
@@ -114,7 +120,7 @@ class chunk:
         self._end = e
         self.num_pixels = self.calculate_num_pixels()
         self.neopixel = _neopixel
-        self.animation = animation_colorwiperandom(self, 3, "idc")
+        self.animation = animation_colorwiperandom(self, 2, "idc")
         self.animation.start()
 
     def calculate_num_pixels(self):
@@ -158,7 +164,7 @@ class chunk:
             return (-1, f"sanitation error: {sanitation_result[1]}")
 
         self.animation = _animation_class(
-            self, _default_update_rate, *(sanitation_result[1])
+            self, default_sanitation_result[1], *(sanitation_result[1])
         )
         print(self.animation)
         self.animation.start()
@@ -224,20 +230,17 @@ class animation_colorwiperandom(animation):
         self.update_count += 1
 
     @staticmethod
-    def sanitize_arguments(_w, _update_rate):
+    def sanitize_arguments(_w):
         w = None
-        wait_ms = None
+
+        print(_w)
 
         try:
             w = int(_w)
         except:
             return (-1, "invalid w")
-        try:
-            update_rate = int(_update_rate)
-        except:
-            return (-1, "invalid wait_ms")
 
-        return (0, (w))
+        return (0, (w,))
 
 
 class animation_colorwipesequence(animation):
@@ -263,7 +266,7 @@ class animation_colorwipesequence(animation):
         try:
             tmp = util.parse_list(_colors)
             for c in tmp:
-                colors.append(util.decode_color(c))
+                colors.append(util.parse_color(c))
         except:
             return (-1, "invalid colors")
         try:
@@ -274,9 +277,28 @@ class animation_colorwipesequence(animation):
         return (0, (colors, wait_ms))
 
 
+class animation_staticcolor(animation):
+    def __init__(self, _chunk, _default_update_rate, _color) -> None:
+        super().__init__(_chunk, _default_update_rate)
+        self.color = _color
+
+    def update(self, tick):
+        for i in range(self.chunk.start, self.chunk.end + 1):
+            self.strip.setPixelColor(i, self.color)
+
+    @staticmethod
+    def sanitize_arguments(_color):
+        color = None
+        try:
+            color = util.parse_color(_color)
+        except:
+            return (-1, "invalid color")
+        return (0, (color,))
+
+
 class animation_off(animation):
-    def __init__(self, _chunk, _update_rate) -> None:
-        animation.__init__(self, _chunk, _update_rate)
+    def __init__(self, _chunk, _default_update_rate) -> None:
+        super().__init__(_chunk, _default_update_rate)
 
     def update(self, tick):
         off_color = Color(0, 0, 0, 0)
@@ -326,7 +348,7 @@ class animation_theaterchase(animation):
         color = None
         wait_ms = None
 
-        color = util.decode_color(_color)
+        color = util.parse_color(_color)
 
         if color == -1:
             return (-1, "invalid color")
@@ -364,25 +386,22 @@ class animation_theaterchaserainbow(animation):
 
 
 class animation_rainbowcycle(animation):
-    def __init__(self, _chunk, _wait_ms=100) -> None:
-        super().__init__(_chunk)
-        self.wait_ms = _wait_ms
+    def __init__(self, _chunk, _default_update_rate) -> None:
+        super().__init__(_chunk, _default_update_rate)
 
     def update(self, tick):
-        for j in range(256):
-            for i in range(self.chunk.start, self.chunk.end + 1):
-                self.strip.setPixelColor(
-                    i, util.wheel(((i * 256 // self.chunk.num_pixels) + j) & 255)
-                )
+        for i in range(self.chunk.start, self.chunk.end + 1):
+            self.strip.setPixelColor(
+                i,
+                util.wheel(
+                    ((i * 256 // self.chunk.num_pixels) + self.update_count) & 255
+                ),
+            )
+        self.update_count += 1
 
     @staticmethod
-    def sanitize_arguments(_wait_ms):
-        wait_ms = None
-        try:
-            wait_ms = int(_wait_ms)
-        except:
-            return (-1, "invalid wait_ms")
-        return (0, (wait_ms,))
+    def sanitize_arguments():
+        return (0, ())
 
 
 # endregion
@@ -415,7 +434,14 @@ if __name__ == "__main__":
     #         strip.chunks[0].set_animation(animation_rainbowcycle(strip.chunks[0]))
 
     strip.print_chunk_segmentation()
-    #strip.chunks[0].set_animation(animation_off, -1, ())
+    strip.chunks[0].set_animation(animation_rainbowcycle, 4, ())
+    strip.make_chunk(50, 100)
+    strip.print_chunk_segmentation()
+    strip.make_chunk(75, 150)
+    strip.print_chunk_segmentation()
+    strip.make_chunk(0, LED_COUNT - 1)
+    strip.print_chunk_segmentation()
+    strip.chunks[0].set_animation(animation_rainbowcycle, 4, ())
     while True:
         strip.update()
     time.sleep(1)
