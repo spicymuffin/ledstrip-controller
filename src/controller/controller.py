@@ -44,7 +44,15 @@ def executor_load(args):
     for line in lines:
         cmd, payload = interpret(line[:-1])
         SEND_SOCKET.sendto(payload.encode("utf-8"), (SERVER_IP, PORT_NUMBER))
-        data, (ip, port) = SEND_SOCKET.recvfrom(1024)
+        data = None
+        ip = None
+        port = None
+        try:
+            data, (ip, port) = SEND_SOCKET.recvfrom(1024)
+        except Exception as ex:
+            print("timed out, exception on server...")
+            return
+
         print(data)
 
 
@@ -64,7 +72,14 @@ def mainloop():
             LOCAL_CMDS[cmd](payload)
         else:
             SEND_SOCKET.sendto(payload.encode("utf-8"), (SERVER_IP, PORT_NUMBER))
-            data, (ip, port) = SEND_SOCKET.recvfrom(1024)
+            data = None
+            ip = None
+            port = None
+            try:
+                data, (ip, port) = SEND_SOCKET.recvfrom(1024)
+            except Exception as ex:
+                print("timed out, exception on server...")
+
             print(data)
 
 
