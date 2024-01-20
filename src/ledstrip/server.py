@@ -70,6 +70,10 @@ ANIM_DICT = {
         "class": animation_cancer,
         "aliases": ["cancer", "cncr"],
     },
+    "staticcolor": {
+        "class": animation_staticcolor,
+        "aliases": ["staticolor", "sc"],
+    },
 }
 
 
@@ -100,8 +104,9 @@ def command_change_animation(_args):
         return (-1, "chunk_data/animation_code fault")
 
     ac = _args[0]
-    chunk_data = _args[1]
-    args = _args[2:]
+    default_update_rate = _args[1]
+    chunk_data = _args[2]
+    args = _args[3:]
 
     ac_interpret_result = animationcode_interpret(_animation_code=ac)
 
@@ -115,9 +120,11 @@ def command_change_animation(_args):
 
     try:
         for a in chunk_data_interpret_result:
-            set_animation_result = STRIP.chunks[a].set_animation(anim, args)
-    except:
-        return (-1, "chunk setting error")  # probably never going to trigger but eh
+            set_animation_result = STRIP.chunks[a].set_animation(
+                anim, default_update_rate, args
+            )
+    except Exception as ex:
+        return (-1, f"set anim error {ex}")  # probably never going to trigger but eh
 
     if set_animation_result[0] == -1:
         return (-1, set_animation_result[1])
@@ -133,11 +140,13 @@ def command_off(_args):
     global STRIP
 
     return command_change_animation(
-        ["off", ",".join(list(map(str, range(len(STRIP.chunks)))))]
+        ["off", "-1", ",".join(list(map(str, range(len(STRIP.chunks)))))]
     )
 
 
 def command_make_chunk(_args):
+    global STRIP
+
     if len(_args) < 2:
         return (-1, "chunk boundaries setting error")
 
@@ -149,6 +158,9 @@ def command_make_chunk(_args):
         e = int(e)
     except:
         return (-1, "invalid boundaries")
+
+    STRIP.make_chunk(s, e)
+    return (0, "ack")
 
 
 CMD_MAP = {
@@ -180,6 +192,15 @@ def listen():
         RECV_SOCKET.sendto(result[1].encode("utf-8"), addr)
 
 
+def update_strip():
+    global STRIP
+    while True:
+        STRIP.update()
+
+
 if __name__ == "__main__":
     startup()
+    strip_update_thread = threading.Thread(target=update_strip)
+    strip_update_thread.daemon = True
+    strip_update_thread.start()
     listen()
